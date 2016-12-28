@@ -7,6 +7,8 @@
 #include <math.h>
 #include <string.h>
 
+
+
 typedef struct LPair {
   int d_key;
   int d_tid;       /* tuple ID */
@@ -47,7 +49,7 @@ typedef struct CSBINODE64 {
   //}
 };
 struct CSBINODE64*    g_csb_root64;
-
+#define IsLeaf(x) !(((struct BPLNODE64*)x)->d_flag)
 
 
 
@@ -268,6 +270,53 @@ void csbBulkLoad641(int n, struct LPair* a, int iUpper, int lUpper) {
 }
 
 
+int csbSearch64(struct CSBINODE64* root, int key) {
+  int l,m,h;
+
+
+  while (!IsLeaf(root)) {
+
+
+    l=0;
+    h=root->d_num-1;
+    while (l<=h) {
+      m=(l+h)>>1;
+      if (key <= root->d_keyList[m])
+	h=m-1;
+      else
+	l=m+1;
+    }
+
+
+    root=(struct CSBINODE64*) root->d_firstChild+l;
+  }
+
+  //now search the leaf
+
+
+  l=0;
+  h=((struct BPLNODE64*)root)->d_num-1;
+  while (l<=h) {
+    m=(l+h)>>1;
+    if (key <= ((struct BPLNODE64*)root)->d_entry[m].d_key)
+      h=m-1;
+    else
+      l=m+1;
+  }
+
+  // by now, d_entry[l-1].d_key < key <= d_entry[l].d_key,
+  // l can range from 0 to ((BPLNODE64*)root)->d_num
+
+  if (l<((struct BPLNODE64*)root)->d_num && key==((struct BPLNODE64*)root)->d_entry[l].d_key){
+	  printf ("searched key is %d \n",((struct BPLNODE64*)root)->d_entry[l].d_tid);
+    return ((struct BPLNODE64*)root)->d_entry[l].d_tid;
+  }
+  else
+    return 0;
+}
+
+
+
 int array[] = {2,3,5,7,12,13,16,19,20,22,24,25,27,30,31,33,36,39};
 struct LPair* a;
 struct CSBINODE64* root;
@@ -286,10 +335,13 @@ struct CSBINODE64* root;
 	     //   printf("%d\t",a[i].d_key);
 	    }
 	   csbBulkLoad641(count,a,iUpper,lUpper);
+	   csbSearch64(g_csb_root64,22);
 
 	   // printf ("%d\n",root->d_keyList[2]);
 
 	}
+
+
 
 
 
