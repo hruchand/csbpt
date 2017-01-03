@@ -66,7 +66,7 @@ struct CSBINODE64*    g_csb_root64;
 // iUpper: maximum number of keys for each internal node duing bulkload.
 // lUpper: maximum number of keys for each leaf node duing bulkload.
 // Note: iUpper has to be less than 14.
-void csbBulkLoad641(int n, struct LPair* a, int iUpper, int lUpper) {
+void csbBulkLoad64(int n, struct LPair* a, int iUpper, int lUpper) {
   struct BPLNODE64 *lcurr, *start, *lprev;
   struct CSBINODE64 *iLow, *iHigh, *iHighStart, *iLowStart;
   int temp_key;
@@ -602,6 +602,63 @@ void csbInsert64(struct CSBINODE64* root,struct CSBINODE64* parent, int childInd
 }
 
 
+int csbDelete64(struct CSBINODE64* root,struct LPair del_entry) {
+  int l,h,m, i;
+
+
+  while (!IsLeaf(root)) {
+
+
+    l=0;
+    h=root->d_num-1;
+    while (l<=h) {
+      m=(l+h)>>1;
+      if (del_entry.d_key <= root->d_keyList[m])
+	h=m-1;
+      else
+	l=m+1;
+    }
+
+    root=(struct CSBINODE64*) root->d_firstChild+l;
+  }
+
+  //now search the leaf
+
+  l=0;
+  h=((struct BPLNODE64*)root)->d_num-1;
+  while (l<=h) {
+    m=(l+h)>>1;
+    if (del_entry.d_key <= ((struct BPLNODE64*)root)->d_entry[m].d_key)
+      h=m-1;
+    else
+      l=m+1;
+  }
+
+
+  // by now, d_entry[l-1].d_key < key <= d_entry[l].d_key,
+  // l can range from 0 to ((BPLNODE64*)root)->d_num
+  do {
+    while (l<((struct BPLNODE64*)root)->d_num) {
+      if (del_entry.d_key==((struct BPLNODE64*)root)->d_entry[l].d_key) {
+	if (del_entry.d_tid == ((struct BPLNODE64*)root)->d_entry[l].d_tid) { //delete this entry
+	  for (i=l; i<((struct BPLNODE64*)root)->d_num-1; i++)
+	    ((struct BPLNODE64*)root)->d_entry[i]=((struct BPLNODE64*)root)->d_entry[i+1];
+	  ((struct BPLNODE64*)root)->d_num--;
+
+	  return 1;
+	}
+	l++;
+      }
+      else
+	return 0;
+    }
+    root=(struct CSBINODE64*) ((struct BPLNODE64*)root)->d_next;
+    l=0;
+  }while (root);
+
+  return 0;
+}
+
 
 int array[] = {2,3,5,7,12,13,16,19,20,22,24,25,27,30,31,33,36,39};
 struct LPair* a;
@@ -614,6 +671,7 @@ struct CSBINODE64* root;
 	    void* tempChild;
 	    int iUpper = 2;
 	    int lUpper = 2;
+	    int status = 0;
 	    int count =(int)( sizeof(array) / sizeof(array[0]));
 	    a1 = (struct LPair*)malloc(sizeof(struct LPair)*1);
 a1[0].d_key =55;
@@ -626,10 +684,12 @@ a1[0].d_tid= 55;
 	        a[i].d_tid = array[i];
 	     //   printf("%d\t",a[i].d_key);
 	    }
-	   csbBulkLoad641(count,a,iUpper,lUpper);
+	   csbBulkLoad64(count,a,iUpper,lUpper);
 	   csbSearch64(g_csb_root64,22);
 
 	   csbInsert64(g_csb_root64, 0, 0, a1[0], &tempKey, &tempChild);
+	   status = csbDelete64(g_csb_root64,a1[0]);
+	   printf("status of deletion is %d",status);
 	   //csbSearch64(g_csb_root64,55);
 
 	   // printf ("%d\n",root->d_keyList[2]);
